@@ -13,12 +13,22 @@ defmodule CartEcto.MixProject do
 
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: applications(Mix.env),
       mod: {CartEcto.Application, []}
     ]
   end
 
   defp deps do
-    []
+    [
+      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
+      {:ecto, "~> 3.0"},
+      {:ex_unit_notifier, "~> 0.1.4", only: :test},
+      {:mix_test_watch, "~> 0.9.0"},
+      {:postgrex, "~> 0.14.1"},
+      {:remix, "~> 0.0.2", only: :dev}
+    ]
   end
+
+  defp applications(:dev), do: applications(:all) ++ [:remix]
+  defp applications(_all), do: [:logger]
 end
