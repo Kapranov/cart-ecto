@@ -1,4 +1,4 @@
-# Meet Ecto, The No-Compromise Database Wrapper For Concurrent Elixir Apps
+## The No-Compromise Database Wrapper For Concurrent Elixir Apps
 
 Ecto is a domain specific language for writing queries and interacting
 with databases in the Elixir language.
@@ -19,7 +19,7 @@ Ecto is comprised of 4 main components:
   allowing developers to build queries piece by piece instead of all at
   once.
 
-## Installation and Configuration
+### Installation and Configuration
 
 For starters, let's create a new app with a supervisor using Mix. Mix is
 a build tool that ships with Elixir that provides tasks for creating,
@@ -30,7 +30,7 @@ more.
 mix new ./ --app cart_ecto --sup
 ```
 
-### 16 Feb 2019 by Oleg G.Kapranov
+#### 16 Feb 2019 by Oleg G.Kapranov
 
 [1]: https://www.toptal.com/elixir/meet-ecto-database-wrapper-for-elixir
 [2]: https://github.com/boriscy/cart
