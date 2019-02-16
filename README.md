@@ -196,6 +196,23 @@ This command creates the database and, with that, we have essentially
 finished the configuration. We arenow ready to start coding, but let's
 define the scope of our app first.
 
+### Building an Invoice with Inline Items
+
+For our demo application, we will build a simple invoicing tool. For
+changesets (models) we will have Invoice, Item and InvoiceItem.
+InvoiceItem belongs to Invoice and Item. This diagram represents how
+our models will be related to each other:
+
+![schema](/schema.png "schema tables")
+
+The diagram is pretty simple. We have a table `invoices` that has many
+`invoice_items` where we store all the details and also a table `items`
+that has many `invoice_items`. You can see that the type for `invoice_id`
+and `item_id` in `invoice_items` table is UUID. We are using UUID
+because it helps obfuscate the routes, in case you want to expose the
+app over an API and makes it simpler to sync since you don't depend on a
+sequential number. Now let's create the tables using Mix tasks.
+
 #### 16 Feb 2019 by Oleg G.Kapranov
 
 [1]: https://www.toptal.com/elixir/meet-ecto-database-wrapper-for-elixir
