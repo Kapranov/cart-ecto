@@ -5,6 +5,7 @@ defmodule CartEcto.Application do
 
   def start(_type, _args) do
     children = [
+      {CartEcto.Repo, []}
     ]
 
     opts = [strategy: :one_for_one, name: CartEcto.Supervisor]

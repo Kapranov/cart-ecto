@@ -61,7 +61,7 @@ defmodule CartEcto.MixProject do
   defp deps do
     [
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
-      {:ecto, "~> 3.0"},
+      {:ecto_sql, "~> 3.0"},
       {:ex_unit_notifier, "~> 0.1.4", only: :test},
       {:mix_test_watch, "~> 0.9.0"},
       {:postgrex, "~> 0.14.1"},
@@ -85,6 +85,116 @@ stores all dependencies and `sub-dependencies` of the installed packages
 (similar to `Gemfile.lock` in bundler).
 
 ### Ecto.Repo
+
+![schema](/models.png "schema model")
+
+We will now look at how to define a repo in our application. We can have
+more than one repo, meaning we can connect to more than one database. We
+need to configure the database in the file `config/config.exs`:
+
+```elixir
+use Mix.Config
+
+if Mix.env == :dev do
+  config :mix_test_watch,
+    clear: true
+
+  import_config "dev.secret.exs"
+end
+
+if Mix.env == :test do
+  import_config "test.secret.exs"
+end
+
+if Mix.env == :prod do
+  import_config "prod.secret.exs"
+end
+```
+
+We are just setting the minimum, so we can run the next command. With
+the line `:cart_ecto, cart_repos: [CartEcto.Repo]` we are telling Ecto
+which repos we are using. This is a cool feature since it allows us to
+have many repos, i.e. we can connect to multiple databases.
+
+Now run the following command: `mix ecto.gen.repo`
+
+This command generates the repo. If you read the output, it tells you
+to add a supervisor and repo in your app. Let's start with the
+supervisor. We will edit `lib/cart_ecto.ex`:
+
+```elixir
+defmodule CartEcto.Application do
+  @moduledoc false
+
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      {CartEcto.Repo, []}
+    ]
+
+    opts = [strategy: :one_for_one, name: CartEcto.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+end
+```
+In this file, we are defining the supervisor `{CartEcto.Repo, []}`
+and adding it to the children list (in Elixir,  lists are similar
+to arrays). We define the children supervised with the strategy
+`strategy: :one_for_one` which means that, if one of the supervised
+processes fails, the supervisor will restart only that process into
+its default state. If you look at `lib/cart_ecto/repo.ex` you will
+see that this file has been already created, meaning we have a Repo
+for our application.
+
+```elixir
+defmodule CartEcto.Repo do
+  use Ecto.Repo,
+    otp_app: :cart_ecto,
+    adapter: Ecto.Adapters.Postgres
+end
+```
+Now let's edit the configuration file `config/config.exs`:
+
+```elixir
+use Mix.Config
+
+if Mix.env == :dev do
+
+  config :mix_test_watch,
+    clear: true
+
+  config :cart_ecto,
+    ecto_repos: [CartEcto.Repo]
+
+  config :cart_ecto, CartEcto.Repo,
+    database: "cart_dev",
+    username: "your_login",
+    password: "your_password",
+    hostname: "localhost"
+end
+
+if Mix.env == :test do
+  config :cart_ecto,
+    ecto_repos: [CartEcto.Repo]
+
+  config :cart_ecto, CartEcto.Repo,
+    database: "cart_test",
+    username: "your_login",
+    password: "your_password",
+    hostname: "localhost"
+end
+
+if Mix.env == :prod do
+end
+```
+
+Having defined all configuration for our database we can now generate
+it by running: `mix ecto.create`
+
+This command creates the database and, with that, we have essentially
+finished the configuration. We arenow ready to start coding, but let's
+define the scope of our app first.
 
 #### 16 Feb 2019 by Oleg G.Kapranov
 

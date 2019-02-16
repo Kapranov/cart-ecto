@@ -6,3 +6,7 @@
 erl_crash.dump
 *.ez
 cart_ecto-*.tar
+
+/config/dev.secret.exs
+/config/test.secret.exs
+/config/prod.secret.exs
