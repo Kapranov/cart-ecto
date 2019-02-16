@@ -326,6 +326,96 @@ that references the invoices table. We have the same pattern for
 an index: `create index(:invoice_items, [:invoice_id])` creates the
 `invoice_items_invoice_id_index`.
 
+### Ecto.Schema and Ecto.Changeset
+
+In Ecto, `Ecto.Model` has been deprecated in favor of using `Ecto.Schema`,
+so we will call the modules schemas instead of models. Let's create the
+changesets. We will start with the most simple changeset Item and create
+the file `lib/cart_ecto/item.ex`:
+
+```elixir
+defmodule CartEcto.Item do
+  use Ecto.Schema
+
+  import Ecto.Changeset
+
+  alias CartEcto.{Item}
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+  schema "items" do
+    field :name, :string
+    field :price, :decimal, precision: 12, scale: 2
+
+    timestamps()
+  end
+
+  def changeset(%Item{} = item, attrs) do
+    item
+    |> cast(attrs, [:name, :price])
+    |> validate_required([:name, :price])
+    |> validate_number(:price, greater_than_or_equal_to: Decimal.new(0))
+  end
+end
+```
+
+At the top, we inject code into the changeset using `use Ecto.Schema`.
+We are also using `import Ecto.Changeset` to import functionality from
+`Ecto.Changeset`. We could have specified which specific methods to
+import, but let’s keep it simple. The `alias Cart.InvoiceItem` allows us
+to write directly inside the changeset InvoiceItem, as you will see in a
+moment.
+
+The `@primary_key {:id, :binary_id, autogenerate: true}` specifies that
+our primary key will be auto generated. Since we are using a UUID type,
+we define the schema with `schema "items" do` and inside the block we
+define each field and relationships. We defined name as string and price
+as decimal, very similar to the migration. Next, the macro
+`has_many :invoice_items, InvoiceItem`  indicates a relationship between
+`Item` and `InvoiceItem`. Since by convention we named the field
+`item_id` in the `invoice_items` table, we don’t need to configure the
+foreign key. Finally the `timestamps` method will set the `inserted_at`
+and `updated_at` fields.
+
+### Ecto.Changeset
+
+![schema](/changeset.png "changeset model")
+
+The `def changeset(%Item{} = item, attrs) do` function receives an Elixir
+struct with params which we will pipe through different functions.
+`cast(attrs, [:name, :price])` casts the values into the correct type.
+For instance, you can pass only strings in the params and those would be
+converted to the correct type defined in the schema.
+`validate_required([:name, :price])` validates that the name and price
+fields are present,
+`validate_number(:price, greater_than_or_equal_to: Decimal.new(0))`
+validates that the number is greater than or equal to 0 or in this case
+`Decimal.new(0)`.
+
+That was a lot to take in, so let's look at this in the console with
+examples so you can grasp the concepts better: `iex -S mix`
+
+This will load the console. `-S mix` loads the current project into the
+iex REPL.
+
+```elixir
+item = CartEcto.Item.changeset(%CartEcto.Item{}, %{name: "Paper", price: "2.5"})
+
+#Ecto.Changeset<
+  action: nil,
+  changes: %{name: "Paper", price: #Decimal<2.5>},
+  errors: [],
+  data: #CartEcto.Item<>,
+  valid?: true
+>
+```
+
+This returns an `Ecto.Changeset` struct that is valid without errors.
+Now let’s save it:
+
+```elixir
+item = CartEcto.Repo.insert!(item)
+```
+
 #### 16 Feb 2019 by Oleg G.Kapranov
 
 [1]: https://www.toptal.com/elixir/meet-ecto-database-wrapper-for-elixir
