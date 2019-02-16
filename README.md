@@ -213,6 +213,119 @@ because it helps obfuscate the routes, in case you want to expose the
 app over an API and makes it simpler to sync since you don't depend on a
 sequential number. Now let's create the tables using Mix tasks.
 
+### Ecto.Migration
+
+![schema](/invoices.png "invoices table")
+
+Migrations are files that are used to modify the database schema.
+`Ecto.Migration` gives you a set of methods to create tables, add
+indexes, create constraints, and other schema-related stuff. Migrations
+really help keep the application in sync with the database. Let's create
+a migration script for our first table:
+
+```bash
+mix ecto.gen.migration create_invoices
+```
+
+This will generate a file similar to
+`priv/repo/migrations/20190216165320_create_invoices.exs`
+where we will define our migration. Open the file generated and modify
+its contents to be as follows:
+
+```elixir
+defmodule CartEcto.Repo.Migrations.CreateInvoices do
+  use Ecto.Migration
+
+  def change do
+    create table(:invoices, primary_key: false) do
+      add :id, :uuid, primary_key: true
+      add :customer, :text
+      add :amount, :decimal, precision: 12, scale: 2
+      add :balance, :decimal, precision: 12, scale: 2
+      add :date, :date
+
+      timestamps()
+    end
+end
+```
+
+Inside method `def change do` we define the schema that will generate
+the SQL for the database.
+`create table(:invoices, primary_key: false) do` will create the table
+invoices. We have set `primary_key: false` but we will add an ID field
+of type UUID, customer field of type text, date field of type date. The
+`timestamps` method will generate the fields `inserted_at`, `updated_at`
+that Ecto automatically fills with the time the record was inserted and
+the time it was updated, respectively. Now go to the console and run the
+migration: `mix ecto.migrate`
+
+We have created the table `invoice`'s with all the defined fields. Let's
+create the items table:
+
+```bash
+mix ecto.gen.migration create_items
+```
+
+Now edit the generated migration script:
+
+```elixir
+defmodule CartEcto.Repo.Migrations.CreateItems do
+  use Ecto.Migration
+
+  def change do
+    create table(:items, primary_key: false) do
+      add :id, :uuid, primary_key: true
+      add :name, :text
+      add :price, :decimal, precision: 12, scale: 2
+
+      timestamps()
+    end
+  end
+end
+```
+
+The new thing here is the decimal field that allows numbers with 12
+digits, 2 of which are for the decimal part of the number. Let's run
+the migration again: `mix ecto.migrate`
+
+Now we have created items table and finally let's create the
+`invoice_items` table:
+
+```bash
+mix ecto.gen.migration create_invoice_items
+```
+
+Edit the migration:
+
+```elixir
+defmodule CartEcto.Repo.Migrations.CreateInvoiceItems do
+  use Ecto.Migration
+
+  def change do
+    create table(:invoice_items, primary_key: false) do
+      add :id, :uuid, primary_key: true
+      add :invoice_id, references(:invoices, type: :uuid, null: false)
+      add :item_id, references(:items, type: :uuid, null: false)
+      add :price, :decimal, precision: 12, scale: 2
+      add :quantity, :decimal, precision: 12, scale: 2
+      add :subtotal, :decimal, precision: 12, scale: 2
+
+      timestamps()
+    end
+
+    create index(:invoice_items, [:invoice_id])
+    create index(:invoice_items, [:item_id])
+  end
+end
+```
+As you can see, this migration has some new parts. The first thing you
+will notice is `add :invoice_id, references(:invoices, type: :uuid, null: false)`
+This creates the field `invoice_id` with a constraint in the database
+that references the invoices table. We have the same pattern for
+`item_id` field. Another thing that is different is the way we create
+an index: `create index(:invoice_items, [:invoice_id])` creates the
+`invoice_items_invoice_id_index`.
+
 #### 16 Feb 2019 by Oleg G.Kapranov
 
 [1]: https://www.toptal.com/elixir/meet-ecto-database-wrapper-for-elixir
