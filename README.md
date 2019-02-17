@@ -416,6 +416,33 @@ Now let’s save it:
 item = CartEcto.Repo.insert!(item)
 ```
 
+We don’t show the SQL for brevity. In this case, it returns the
+`CartEcto.Item` struct with all the values set, You can see that
+`inserted_at` and `updated_at` contain their timestamps and the
+`id` field has a UUID value. Let's see some other cases:
+
+```elixir
+item2 = CartEcto.Item.changeset(%CartEcto.Item{price: Decimal.new(20)}, %{name: "Scissors"})
+```
+Now we have set the `Scissors` item item in a different way, setting the
+price directly `%CartEcto.Item{price: Decimal.new(20)}`.
+
+We need to set its correct type, unlike the first item where we just
+passed a string as price. We could have passed a float and this would
+have been cast into a decimal type. If we pass, for example
+`%CartEcto.Item{price: 12.5}`, when you insert the item it would throw
+an exception stating that the type doesn't match.
+
+```elixir
+invalid_item = CartEcto.Item.changeset(%CartEcto.Item{}, %{name: "Scissors", price: -1.5})
+```
+
+To terminate the console, press `Ctrl+C` twice. You can see that
+validations are working and the price must be greater than or equal to
+zero (0). As you can see, we have defined all the schema `Ecto.Schema`
+which is the part related to how the structure of the module is defined
+and the changeset `Ecto.Changeset` which is all validations and casting.
+
 Let's continue and create the file `lib/cart_ecto/invoice_item.ex`:
 
 ```elixir
