@@ -416,6 +416,192 @@ Now let’s save it:
 item = CartEcto.Repo.insert!(item)
 ```
 
+Let's continue and create the file `lib/cart_ecto/invoice_item.ex`:
+
+```elixir
+defmodule CartEcto.InvoiceItem do
+  use Ecto.Schema
+
+  import Ecto.Changeset
+
+  alias CartEcto.InvoiceItem
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+  schema "invoice_items" do
+    belongs_to :invoice, CartEcto.Invoice, type: :binary_id
+    belongs_to :item, CartEcto.Item, type: :binary_id
+    field :quantity, :decimal, precision: 12, scale: 2
+    field :price, :decimal, precision: 12, scale: 2
+    field :subtotal, :decimal, precision: 12, scale: 2
+
+    timestamps()
+  end
+
+  @zero Decimal.new(0)
+
+  @doc false
+  def changeset(%InvoiceItem{} = invoice_item, attrs) do
+    invoice_item
+    |> cast(attrs, [:quantity, :price, :subtotal, :invoice_id, :item_id])
+    |> validate_required([:quantity, :price, :subtotal, :invoice_id, :item_id])
+    |> validate_number(:price, greater_than_or_equal_to: @zero)
+    |> validate_number(:quantity, greater_than_or_equal_to: @zero)
+    |> foreign_key_constraint(:invoice_id, message: "Select a valid invoice")
+    |> foreign_key_constraint(:item_id, message: "Select a valid item")
+    |> set_subtotal
+  end
+
+  @doc false
+  def set_subtotal(cs) do
+    case {(cs.changes[:price] || cs.invoice_item.price), (cs.changes[:quantity] || cs.invoice_item.quantity)} do
+      {_price, nil} -> cs
+      {nil, _quantity} -> cs
+      {price, quantity} ->
+        put_change(cs, :subtotal, Decimal.mult(price, quantity))
+    end
+  end
+end
+```
+This changeset is bigger but you should already be familiar with most of
+it. Here `belongs_to :invoice, CartEcto.Invoice, type: :binary_id`
+defines the `belongs to` relationship with the `CartEcto.Invoice`
+changeset that we will soon create. The next `belongs_to :item` creates
+a relationship with the items table. We have defined
+`@zero Decimal.new(0)`. In this case, `@zero` is like a constant that
+can be accessed inside the module. The changeset function has new parts,
+one of which is
+`foreign_key_constraint(:invoice_id, message: "Select a valid invoice")`
+This will allow an error message to be generated instead of generating
+an exception when the constraint is not fulfilled. And finally, the
+method `set_subtotal` will calculate the subtotal. We pass the changeset
+and return a new changeset with the subtotal calculated if we have both
+the price and quantity.
+
+Now, let's create the `CartEcto.Invoice`. So create and edit the file
+`lib/cart_ecto/invoice.ex` to contain the following:
+
+```elixir
+defmodule CartEcto.Invoice do
+  use Ecto.Schema
+
+  import Ecto.Changeset
+
+  alias CartEcto.{Invoice, InvoiceItem, Repo}
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+  schema "invoices" do
+    field :customer, :string
+    field :amount, :decimal, precision: 12, scale: 2
+    field :balance, :decimal, precision: 12, scale: 2
+    field :date, :utc_datetime
+    has_many :invoice_items, InvoiceItem, on_delete: :delete_all
+
+    timestamps()
+  end
+
+  def changeset(%Invoice{} = invoice, attrs) do
+    invoice
+    |> cast(attrs, [:customer, :amount, :balance, :date])
+    |> validate_required([:customer, :date])
+  end
+
+  def create(params) do
+    cs = changeset(%Invoice{}, params)
+    |> validate_item_count(params)
+    |> put_assoc(:invoice_items, get_items(params))
+
+    if cs.valid? do
+      Repo.insert(cs)
+    else
+      cs
+    end
+  end
+
+  defp get_items(params) do
+    items = params[:invoice_items] || params["invoice_items"]
+    Enum.map(items, fn(item)-> InvoiceItem.changeset(%InvoiceItem{}, item) end)
+  end
+
+  defp validate_item_count(cs, params) do
+    items = params[:invoice_items] || params["invoice_items"]
+
+    if Enum.count(items) <= 0 do
+      add_error(cs, :invoice_items, "Invalid number of items")
+    else
+      cs
+    end
+  end
+end
+```
+
+`CartEcto.Invoice` changeset has some differences. The first one is
+inside schemas: `has_many :invoice_items, InvoiceItem, on_delete: :delete_all`
+means that when we delete an invoice, all the associated `invoice_items`
+will be deleted. Keep in mind, though, that this is not a constraint
+defined in the database.
+
+Let's try the create method in the console to understand things better.
+You might have created the items ("Paper", "Scissors") which we will be
+using here:
+
+```elixir
+item_ids = Enum.map(CartEcto.Repo.all(Cart.Item), fn(item)-> item.id end)
+{id1, id2} = {Enum.at(item_ids, 0), Enum.at(item_ids, 1)}
+```
+
+We fetched all items with `CartEcto.Repo.all` and with the `Enum.map`
+function we just get the `item.id` of each item.
+
+In the second line, we just assign  `id1` and `id2` with the first and
+second `item_ids`, respectively:
+
+```elixir
+inv_items = [
+  %{
+    item_id: id1,
+    price: 2.5,
+    quantity: 2
+  },
+  %{
+    item_id: id2,
+    price: 20,
+    quantity: 1
+  }
+]
+
+{:ok, inv} = CartEcto.Invoice.create(
+  %{
+    customer: "James Brown",
+    date: Ecto.Date.utc,
+    invoice_items: inv_items
+  }
+)
+```
+
+The invoice has been created with its `invoice_items` and we can fetch
+all the invoices now.
+
+```elixir
+alias CartEcto.{Repo, Invoice}
+Repo.all(Invoice)
+```
+
+You can see it returns the `Invoice` but we would like to also see the
+`invoice_items`:
+
+```elixir
+Repo.all(Invoice) |> Repo.preload(:invoice_items)
+```
+
+With the `Repo.preload` function, we can get the `invoice_items`. Note
+that this can process queries concurrently. In my case the query looked
+like this:
+
+```elixir
+Repo.get(Invoice, "5d573153-b3d6-46bc-a2c0-6681102dd3ab")
+|> Repo.preload(:invoice_items)
+```
+
 #### 16 Feb 2019 by Oleg G.Kapranov
 
 [1]: https://www.toptal.com/elixir/meet-ecto-database-wrapper-for-elixir
