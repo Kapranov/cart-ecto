@@ -21,7 +21,7 @@ defmodule CartEcto.MixProject do
   defp deps do
     [
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
-      {:ecto_sql, "~> 3.0"},
+      {:ecto_sql, "~> 3.0.5"},
       {:ex_unit_notifier, "~> 0.1.4", only: :test},
       {:mix_test_watch, "~> 0.9.0"},
       {:postgrex, "~> 0.14.1"},

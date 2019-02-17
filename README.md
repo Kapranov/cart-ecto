@@ -572,7 +572,8 @@ You might have created the items ("Paper", "Scissors") which we will be
 using here:
 
 ```elixir
-item_ids = Enum.map(CartEcto.Repo.all(Cart.Item), fn(item)-> item.id end)
+item_ids = Enum.map(CartEcto.Repo.all(CartEcto.Item), fn(item)-> item.id end)
+
 {id1, id2} = {Enum.at(item_ids, 0), Enum.at(item_ids, 1)}
 ```
 
@@ -599,7 +600,7 @@ inv_items = [
 {:ok, inv} = CartEcto.Invoice.create(
   %{
     customer: "James Brown",
-    date: Ecto.Date.utc,
+    date: :utc_datetime,
     invoice_items: inv_items
   }
 )
@@ -633,3 +634,7 @@ Repo.get(Invoice, "5d573153-b3d6-46bc-a2c0-6681102dd3ab")
 
 [1]: https://www.toptal.com/elixir/meet-ecto-database-wrapper-for-elixir
 [2]: https://github.com/boriscy/cart
+[3]: https://github.com/bitwalker/timex/blob/master/docs/Using%20with%20Ecto.md
+[4]: https://teamgaslight.com/blog/using-ectos-virtual-fields-with-select-merge
+
+

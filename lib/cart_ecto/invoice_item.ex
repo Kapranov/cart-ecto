@@ -21,8 +21,8 @@ defmodule CartEcto.InvoiceItem do
   @doc false
   def changeset(%InvoiceItem{} = invoice_item, attrs) do
     invoice_item
-    |> cast(attrs, [:quantity, :price, :subtotal, :invoice_id, :item_id])
-    |> validate_required([:quantity, :price, :subtotal, :invoice_id, :item_id])
+    |> cast(attrs, [:quantity, :price, :item_id])
+    |> validate_required([:quantity, :price, :item_id])
     |> validate_number(:price, greater_than_or_equal_to: @zero)
     |> validate_number(:quantity, greater_than_or_equal_to: @zero)
     |> foreign_key_constraint(:invoice_id, message: "Select a valid invoice")
